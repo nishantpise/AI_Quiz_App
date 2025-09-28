@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Quizzer Pro</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        /* Custom Styles for the futuristic, dark theme */
+        body {
+            font-family: 'Poppins', sans-serif;
+            background: #1a1a2e;
+            background: linear-gradient(45deg, #1a1a2e, #16213e, #0f3460);
+            background-size: 400% 400%;
+            animation: gradientBG 15s ease infinite;
+            color: #e0e0e0;
+        }
+
+        @keyframes gradientBG {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        .screen {
+            display: none;
+            animation: fadeIn 0.8s ease-in-out;
+            width: 100%;
+        }
+
+        .screen.active {
+            display: flex;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: scale(0.95); }
+            to { opacity: 1; transform: scale(1); }
+        }
+
+        .glassmorphism {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 1.5rem;
+        }
+        
+        .glow-button {
+            transition: all 0.3s ease;
+            box-shadow: 0 0 5px #00aaff, 0 0 10px #00aaff, 0 0 15px #00aaff;
+        }
+
+        .glow-button:hover {
+            box-shadow: 0 0 10px #00aaff, 0 0 20px #00aaff, 0 0 30px #00aaff;
+            transform: scale(1.05);
+        }
+        
+        .option-btn { transition: all 0.3s ease; border: 1px solid rgba(255, 255, 255, 0.2); }
+        .option-btn:hover { background-color: rgba(0, 170, 255, 0.2); border-color: #00aaff; transform: translateY(-2px); }
+        .option-btn.correct { background-color: #28a745 !important; color: white; border-color: #28a745; animation: pulse 0.5s; }
+        .option-btn.incorrect { background-color: #dc3545 !important; color: white; border-color: #dc3545; animation: shake 0.5s; }
+        .option-btn:disabled { cursor: not-allowed; opacity: 0.7; }
+        .option-btn.selected { background-color: rgba(0, 170, 255, 0.5); border-color: #00aaff; }
+
+        @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.05); } 100% { transform: scale(1); } }
+        @keyframes shake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-5px); } 75% { transform: translateX(5px); } }
+
+        .loader { width: 50px; height: 50px; border-radius: 50%; border: 5px solid rgba(255, 255, 255, 0.2); border-top-color: #00aaff; animation: spin 1s linear infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* Scrollbar styles */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: rgba(255, 255, 255, 0.1); border-radius: 10px; }
+        ::-webkit-scrollbar-thumb { background: rgba(0, 170, 255, 0.5); border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: #00aaff; }
+    </style>
+</head>
+<body class="flex items-center justify-center min-h-screen p-4">
+
+    <div id="app-container" class="w-full max-w-3xl mx-auto">
+        <!-- Login/Register Screen -->
+        <div id="login-screen" class="screen flex-col items-center justify-center text-center p-8 glassmorphism">
+            <h1 id="form-title" class="text-4xl md:text-5xl font-bold mb-2 text-white">Login</h1>
+            <p class="text-lg mb-6 text-gray-300">Welcome back to AI Quizzer Pro!</p>
+            
+            <input id="email-input" type="email" placeholder="Email" class="w-full max-w-sm p-3 mb-4 bg-gray-900/50 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-cyan-500 transition duration-300">
+            <input id="password-input" type="password" placeholder="Password" class="w-full max-w-sm p-3 mb-4 bg-gray-900/50 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-cyan-500 transition duration-300">
+
+            <p id="auth-error" class="text-red-400 mb-4 h-5"></p>
+
+            <button id="auth-btn" class="px-8 py-3 w-full max-w-sm bg-cyan-500 text-white font-bold rounded-lg glow-button mb-4">Login</button>
+            
+            <p id="toggle-auth" class="text-gray-300 cursor-pointer hover:text-white">Don't have an account? <span class="text-cyan-400 font-semibold">Sign Up</span></p>
+        </div>
+        
+        <!-- Dashboard Screen -->
+        <div id="dashboard-screen" class="screen flex-col p-6 md:p-8 glassmorphism">
+            <div class="flex justify-between items-center mb-6 w-full">
+                <div class="flex items-center gap-3">
+                    <img id="user-photo" class="w-12 h-12 rounded-full border-2 border-cyan-400">
+                    <div class="flex flex-col">
+                        <span id="user-name" class="font-semibold text-lg"></span>
+                        <span id="user-id" class="text-xs text-gray-400"></span>
+                    </div>
+                </div>
+                <button id="logout-btn" class="px-4 py-2 bg-red-500 text-white font-bold rounded-lg transition-transform duration-300 hover:scale-105">Logout</button>
+            </div>
+
+            <div class="w-full text-center flex-grow flex flex-col justify-center items-center">
+                <h2 class="text-3xl font-bold mb-2">Start a New Quiz</h2>
+                <input id="topic-input" type="text" placeholder="e.g., 'The Roman Empire' or 'Quantum Physics'" class="w-full max-w-md p-4 mb-4 bg-gray-900/50 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-cyan-500 transition duration-300">
+                <button id="start-btn" class="px-8 py-3 bg-cyan-500 text-white font-bold rounded-lg glow-button">Start Quiz</button>
+                <div id="start-loader" class="loader mt-6 hidden mx-auto"></div>
+                <p id="start-error" class="text-red-400 mt-4 hidden"></p>
+                <button id="view-history-btn" class="mt-8 px-6 py-2 bg-transparent border border-cyan-400 text-cyan-400 font-semibold rounded-lg transition-all duration-300 hover:bg-cyan-400 hover:text-white">View Quiz History</button>
+            </div>
+        </div>
+
+        <!-- Quiz Screen -->
+        <div id="quiz-screen" class="screen flex-col p-6 md:p-8 glassmorphism">
+            <div class="flex justify-between items-center mb-6">
+                <div id="question-counter" class="text-lg font-semibold"></div>
+                <div id="quiz-timer" class="text-lg font-bold bg-gray-900/50 px-4 py-2 rounded-lg">00:00</div>
+            </div>
+            <p id="question-text" class="text-xl md:text-2xl font-semibold mb-8 text-center min-h-[100px]"></p>
+            <div id="options-container" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
+        </div>
+
+        <!-- Results Screen -->
+        <div id="results-screen" class="screen flex-col items-center justify-center text-center p-8 glassmorphism">
+            <h2 class="text-4xl font-bold mb-4 text-white">Quiz Complete!</h2>
+            <div class="flex gap-8 mb-6 text-2xl">
+                <p>Score: <span id="score-text" class="font-bold text-cyan-400"></span></p>
+                <p>Time: <span id="time-taken-text" class="font-bold text-cyan-400"></span></p>
+            </div>
+            <div id="summary-container" class="text-left w-full max-h-72 overflow-y-auto mb-6 pr-2"></div>
+            <button id="back-to-dashboard-btn" class="px-8 py-3 bg-cyan-500 text-white font-bold rounded-lg glow-button">Back to Dashboard</button>
+        </div>
+        
+        <!-- History Screen -->
+        <div id="history-screen" class="screen flex-col p-6 md:p-8 glassmorphism">
+            <h2 class="text-3xl font-bold mb-4 text-center">Your Quiz History</h2>
+            <div id="history-container" class="w-full flex-grow max-h-[calc(100vh-250px)] overflow-y-auto space-y-3 pr-2">
+                <!-- History items will be injected here -->
+            </div>
+            <button id="back-from-history-btn" class="px-8 py-3 bg-cyan-500 text-white font-bold rounded-lg glow-button mt-6">Back to Dashboard</button>
+        </div>
+
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-app.js";
+        import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-auth.js";
+        import { getFirestore, doc, setDoc, collection, getDocs, addDoc, query, orderBy } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-firestore.js";
+        
+        // Your web app's Firebase configuration - PASTED DIRECTLY HERE
+        const firebaseConfig = {
+            apiKey: "AIzaSyCWFsLJ859moIWwa5ACGVmAkvUMHY4YPpQ",
+            authDomain: "aiquizapp-60546.firebaseapp.com",
+            databaseURL: "https://aiquizapp-60546-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "aiquizapp-60546",
+            storageBucket: "aiquizapp-60546.firebasestorage.app",
+            messagingSenderId: "1085488706285",
+            appId: "1:1085488706285:web:4427cf72eb8725519652e4",
+            measurementId: "G-30Q6PB6335"
+        };
+        
+        let app, auth, db;
+        let currentUser = null;
+        try {
+            app = initializeApp(firebaseConfig);
+            auth = getAuth(app);
+            db = getFirestore(app);
+        } catch (error) {
+            console.error("Firebase initialization failed:", error);
+            document.getElementById('app-container').innerHTML = `<div class="flex items-center justify-center min-h-screen text-white text-center p-4"><div class="glassmorphism p-8"><h1>Application Error</h1><p class="mt-2 text-red-400 font-semibold">Failed to initialize Firebase.</p><p class="mt-2 text-gray-300">Please check the console for more details.</p></div></div>`;
+        }
+        
+        // Only run the app logic if Firebase initialized successfully
+        if (auth && db) {
+            const screens = {
+                login: document.getElementById('login-screen'),
+                dashboard: document.getElementById('dashboard-screen'),
+                quiz: document.getElementById('quiz-screen'),
+                results: document.getElementById('results-screen'),
+                history: document.getElementById('history-screen')
+            };
+
+            const logoutBtn = document.getElementById('logout-btn');
+            const startBtn = document.getElementById('start-btn');
+            const topicInput = document.getElementById('topic-input');
+            const backToDashboardBtn = document.getElementById('back-to-dashboard-btn');
+            const viewHistoryBtn = document.getElementById('view-history-btn');
+            const backFromHistoryBtn = document.getElementById('back-from-history-btn');
+
+            const formTitle = document.getElementById('form-title');
+            const emailInput = document.getElementById('email-input');
+            const passwordInput = document.getElementById('password-input');
+            const authBtn = document.getElementById('auth-btn');
+            const toggleAuth = document.getElementById('toggle-auth');
+            const authError = document.getElementById('auth-error');
+            let isLogin = true;
+
+            let questions = [], currentQuestionIndex = 0, score = 0, userAnswers = [];
+            let quizTimerInterval, quizStartTime;
+
+            // --- Gemini API Interaction ---
+            const API_KEY = "AIzaSyD2YFj_1qZjFYb9QDgSJuqm-3Wh2bilpkI"; 
+            const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${API_KEY}`;
+            const quizSchema = {
+                type: "ARRAY",
+                items: {
+                    type: "OBJECT",
+                    properties: { "question": { "type": "STRING" }, "options": { "type": "ARRAY", "items": { "type": "STRING" }}, "answer": { "type": "STRING" }, "explanation": { "type": "STRING" }}, "required": ["question", "options", "answer", "explanation"]
+                }
+            };
+
+            async function generateQuiz(topic) {
+                setLoading(true);
+                const prompt = `Generate a 10-question multiple-choice quiz about "${topic}". For each question, provide 4 options, the correct answer, and a brief, one-sentence explanation for why the answer is correct.`;
+                try {
+                    if (API_KEY === "PASTE_YOUR_GEMINI_API_KEY_HERE") {
+                        throw new Error("API key is not set. Please add your Gemini API key.");
+                    }
+                    const payload = { contents: [{ parts: [{ text: prompt }] }], generationConfig: { responseMimeType: "application/json", responseSchema: quizSchema }};
+                    const response = await fetch(API_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+                    if (!response.ok) throw new Error(`API request failed with status ${response.status}`);
+                    const result = await response.json();
+                    const jsonText = result.candidates?.[0]?.content?.parts?.[0]?.text;
+                    if (!jsonText) throw new Error("Invalid response format from API.");
+                    questions = JSON.parse(jsonText);
+                    if (!questions || questions.length === 0) throw new Error("Failed to generate questions.");
+                    startQuiz();
+                } catch (error) {
+                    console.error("Error fetching quiz data:", error);
+                    showError(error.message);
+                } finally { setLoading(false); }
+            }
+            
+            // --- Firebase Auth & Data ---
+            onAuthStateChanged(auth, user => {
+                if (user) {
+                    currentUser = user;
+                    setupDashboard(user);
+                    showScreen('dashboard');
+                } else {
+                    currentUser = null;
+                    showScreen('login');
+                }
+            });
+
+            toggleAuth.addEventListener('click', () => {
+                isLogin = !isLogin;
+                formTitle.textContent = isLogin ? 'Login' : 'Sign Up';
+                authBtn.textContent = isLogin ? 'Login' : 'Sign Up';
+                toggleAuth.innerHTML = isLogin ? `Don't have an account? <span class="text-cyan-400 font-semibold">Sign Up</span>` : `Already have an account? <span class="text-cyan-400 font-semibold">Login</span>`;
+                authError.textContent = '';
+            });
+
+            authBtn.addEventListener('click', async () => {
+                const email = emailInput.value.trim();
+                const password = passwordInput.value.trim();
+                authError.textContent = '';
+                if (!email || !password) { authError.textContent = 'Please enter both email and password.'; return; }
+                if (!isLogin && password.length < 6) { authError.textContent = 'Password must be at least 6 characters long.'; return; }
+                try {
+                    if (isLogin) { await signInWithEmailAndPassword(auth, email, password); } 
+                    else { await createUserWithEmailAndPassword(auth, email, password); }
+                } catch (error) {
+                    console.error("Authentication Error:", error.code);
+                    authError.textContent = getAuthErrorMessage(error.code);
+                }
+            });
+
+            function getAuthErrorMessage(errorCode) {
+                switch (errorCode) {
+                    case 'auth/operation-not-allowed': return 'Error: Enable Email/Password sign-in in your Firebase project.';
+                    case 'auth/invalid-email': return 'Please enter a valid email address.';
+                    case 'auth/user-not-found': case 'auth/wrong-password': case 'auth/invalid-credential': return 'Invalid email or password.';
+                    case 'auth/email-already-in-use': return 'An account with this email already exists.';
+                    case 'auth/weak-password': return 'Password should be at least 6 characters.';
+                    default: return 'An unexpected error occurred. Please try again.';
+                }
+            }
+
+            logoutBtn.addEventListener('click', () => signOut(auth));
+            
+            function setupDashboard(user) {
+                document.getElementById('user-photo').src = user.photoURL || `https://placehold.co/48x48/1a1a2e/e0e0e0?text=${user.email ? user.email[0].toUpperCase() : 'A'}`;
+                document.getElementById('user-name').textContent = user.displayName || user.email || 'Anonymous User';
+                document.getElementById('user-id').textContent = `ID: ${user.uid}`;
+            }
+
+            async function saveQuizToHistory() {
+                if (!currentUser) return;
+                const duration = Math.floor((Date.now() - quizStartTime) / 1000);
+                const result = { topic: topicInput.value.trim(), score, totalQuestions: questions.length, duration, timestamp: new Date().toISOString(), answers: userAnswers };
+                try {
+                    // Using a more standard 'users' collection path
+                    const historyRef = collection(db, 'users', currentUser.uid, 'quizzes');
+                    await addDoc(historyRef, result);
+                } catch (error) { console.error("Error saving quiz history:", error); }
+            }
+
+            async function fetchQuizHistory() {
+                if (!currentUser) return;
+                const historyContainer = document.getElementById('history-container');
+                historyContainer.innerHTML = '<div class="loader mx-auto"></div>';
+                try {
+                    // Using a more standard 'users' collection path
+                    const historyRef = collection(db, 'users', currentUser.uid, 'quizzes');
+                    const q = query(historyRef, orderBy('timestamp', 'desc'));
+                    const querySnapshot = await getDocs(q);
+                    if (querySnapshot.empty) { historyContainer.innerHTML = '<p class="text-center text-gray-400">No quizzes taken yet.</p>'; return; }
+                    historyContainer.innerHTML = '';
+                    querySnapshot.forEach(doc => {
+                        const data = doc.data();
+                        const item = document.createElement('div');
+                        item.className = 'p-3 rounded-lg glassmorphism flex justify-between items-center';
+                        item.innerHTML = `<div><p class="font-bold">${data.topic}</p><p class="text-sm text-gray-400">${new Date(data.timestamp).toLocaleString()}</p></div><p class="font-semibold text-lg">${data.score}/${data.totalQuestions}</p>`;
+                        historyContainer.appendChild(item);
+                    });
+                } catch (error) { console.error("Error fetching history:", error); historyContainer.innerHTML = '<p class="text-center text-red-400">Could not load history.</p>'; }
+            }
+
+            // --- UI and State Management ---
+            function showScreen(screenName) { Object.values(screens).forEach(s => s.classList.remove('active')); screens[screenName].classList.add('active'); }
+            function setLoading(isLoading) {
+                const loader = document.getElementById('start-loader');
+                const error = document.getElementById('start-error');
+                loader.style.display = isLoading ? 'block' : 'none';
+                startBtn.disabled = isLoading;
+                startBtn.classList.toggle('opacity-50', isLoading);
+                error.style.display = 'none';
+            }
+            function showError(message) {
+                document.getElementById('start-error').textContent = message;
+                document.getElementById('start-error').style.display = 'block';
+            }
+            function startQuiz() {
+                currentQuestionIndex = 0; score = 0; userAnswers = [];
+                showScreen('quiz');
+                quizStartTime = Date.now();
+                startQuizTimer();
+                displayQuestion();
+            }
+            function displayQuestion() {
+                if (currentQuestionIndex >= questions.length) { showResults(); return; }
+                const question = questions[currentQuestionIndex];
+                document.getElementById('question-counter').textContent = `Question ${currentQuestionIndex + 1}/${questions.length}`;
+                document.getElementById('question-text').textContent = question.question;
+                const optionsContainer = document.getElementById('options-container');
+                optionsContainer.innerHTML = '';
+                question.options.forEach(option => {
+                    const button = document.createElement('button');
+                    button.textContent = option;
+                    button.className = 'p-4 rounded-lg text-left option-btn glassmorphism';
+                    button.onclick = () => handleOptionSelect(option, button);
+                    optionsContainer.appendChild(button);
+                });
+            }
+            function handleOptionSelect(selectedOption, button) {
+                const question = questions[currentQuestionIndex];
+                const correct = selectedOption === question.answer;
+                
+                // Silently update score and save answer
+                if (correct) { score++; }
+                userAnswers.push({ question: question.question, selected: selectedOption, correctAnswer: question.answer, isCorrect: correct, explanation: question.explanation });
+                
+                // Give neutral feedback and disable all options
+                Array.from(document.getElementById('options-container').children).forEach(btn => {
+                    btn.disabled = true;
+                    if (btn === button) {
+                        btn.classList.add('selected'); // Style the selected button
+                    }
+                });
+
+                // Advance to the next question quickly
+                setTimeout(() => {
+                    currentQuestionIndex++;
+                    displayQuestion();
+                }, 300);
+            }
+            function startQuizTimer() {
+                const timerEl = document.getElementById('quiz-timer');
+                quizTimerInterval = setInterval(() => {
+                    const elapsed = Math.floor((Date.now() - quizStartTime) / 1000);
+                    const minutes = String(Math.floor(elapsed / 60)).padStart(2, '0');
+                    const seconds = String(elapsed % 60).padStart(2, '0');
+                    timerEl.textContent = `${minutes}:${seconds}`;
+                }, 1000);
+            }
+            async function showResults() {
+                clearInterval(quizTimerInterval);
+                const timeTaken = Math.floor((Date.now() - quizStartTime) / 1000);
+                const minutes = String(Math.floor(timeTaken / 60)).padStart(2, '0');
+                const seconds = String(timeTaken % 60).padStart(2, '0');
+                document.getElementById('score-text').textContent = `${score}/${questions.length}`;
+                document.getElementById('time-taken-text').textContent = `${minutes}:${seconds}`;
+                const summaryContainer = document.getElementById('summary-container');
+                summaryContainer.innerHTML = '';
+                userAnswers.forEach(answer => {
+                    const item = document.createElement('div');
+                    item.className = 'p-3 mb-2 rounded-lg glassmorphism';
+                    item.innerHTML = `<p class="font-semibold">${answer.question}</p><p class="${answer.isCorrect ? 'text-green-400' : 'text-red-400'}">Your answer: ${answer.selected || 'None'}</p>${!answer.isCorrect ? `<p class="text-gray-300">Correct answer: ${answer.correctAnswer}</p>` : ''}<p class="text-sm text-cyan-300 mt-1"><em>Explanation: ${answer.explanation}</em></p>`;
+                    summaryContainer.appendChild(item);
+                });
+                await saveQuizToHistory();
+                showScreen('results');
+            }
+            startBtn.addEventListener('click', () => {
+                const topic = topicInput.value.trim();
+                if (topic) generateQuiz(topic);
+                else showError("Please enter a topic.");
+            });
+            topicInput.addEventListener('keyup', e => { if (e.key === 'Enter') startBtn.click(); });
+            
+            backToDashboardBtn.addEventListener('click', () => {
+                topicInput.value = '';
+                showScreen('dashboard');
+            });
+
+            viewHistoryBtn.addEventListener('click', () => {
+                fetchQuizHistory();
+                showScreen('history');
+            });
+            backFromHistoryBtn.addEventListener('click', () => showScreen('dashboard'));
+        }
+    </script>
+</body>
+</html>
+```
+
+<!-- ### Why It Wasn't Working (And How to Fix It)
+
+The "Could not load history" error is almost always caused by **Firestore Security Rules**. When you create a database in "Production mode," it is locked by default. No one can read or write data until you give them permission.
+
+You need to add a rule that allows a logged-in user to read and write their *own* data.
+
+**Step 1: Go to Your Firestore Rules**
+
+1.  Open your [Firebase project console](https://console.firebase.google.com/).
+2.  In the left menu, go to **Build > Firestore Database**.
+3.  Click on the **Rules** tab at the top.
+
+
+
+**Step 2: Update Your Rules**
+
+You will see some default rules. Delete them and replace them with the following code. This rule says that a user (`{userId}`) can read and write any quiz document inside their own `quizzes` folder, but they cannot see anyone else's.
+
+```
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /users/{userId}/quizzes/{quizId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+  }
+}
+ -->
